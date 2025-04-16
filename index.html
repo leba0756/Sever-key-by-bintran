@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý Key Tool</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+    }
+    input, select, button {
+      margin: 5px 0;
+      padding: 8px;
+      font-size: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+    }
+    .expired {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h2>Quản lý Key Tool</h2>
+  <input type="text" id="keyInput" placeholder="Nhập key">
+  <input type="number" id="timeValue" placeholder="Thời gian (nếu không vĩnh viễn)">
+  <select id="timeUnit">
+    <option value="minutes">Phút</option>
+    <option value="hours">Giờ</option>
+    <option value="days">Ngày</option>
+    <option value="months">Tháng</option>
+    <option value="years">Năm</option>
+  </select>
+  <br>
+  <input type="number" id="keyLimit" placeholder="Số người dùng (bỏ trống nếu không giới hạn)">
+  <label><input type="checkbox" id="foreverCheck"> Vĩnh viễn</label>
+  <br>
+  <button onclick="addKey()">Thêm / Cập nhật</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Key</th>
+        <th>Hết hạn</th>
+        <th>Trạng thái</th>
+        <th>Số lượt còn</th>
+        <th>Xóa</th>
+      </tr>
+    </thead>
+    <tbody id="keyTable"></tbody>
+  </table>
+
+  <script>
+    const loadKeys = () => {
+      const list = JSON.parse(localStorage.getItem("keyList")) || [];
+      const tbody = document.getElementById("keyTable");
+      tbody.innerHTML = "";
+
+      const now = Date.now();
+
+      list.forEach((item, index) => {
+        const expired = !item.forever && now > item.expire;
+        const row = `<tr>
+          <td>${item.key}</td>
+          <td>${item.forever ? 'Vĩnh viễn' : new Date(item.expire).toLocaleString()}</td>
+          <td class="${expired ? 'expired' : ''}">${expired ? 'Hết hạn' : 'Còn hạn'}</td>
+          <td>${item.usesLeft !== null ? item.usesLeft : 'Không giới hạn'}</td>
+          <td><button onclick="deleteKey(${index})">Xóa</button></td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+    };
+
+    const deleteKey = (i) => {
+      const list = JSON.parse(localStorage.getItem("keyList")) || [];
+      list.splice(i, 1);
+      localStorage.setItem("keyList", JSON.stringify(list));
+      loadKeys();
+    };
+
+    const addKey = () => {
+      const key = document.getElementById("keyInput").value.trim();
+      const val = parseInt(document.getElementById("timeValue").value);
+      const unit = document.getElementById("timeUnit").value;
+      const forever = document.getElementById("foreverCheck").checked;
+      const limit = parseInt(document.getElementById("keyLimit").value);
+
+      if (!key) return alert("Vui lòng nhập key.");
+
+      let ms = 0;
+      if (!forever) {
+        if (isNaN(val)) return alert("Nhập thời gian nếu không chọn vĩnh viễn.");
+        ms = val * 60 * 1000;
+        if (unit === "hours") ms = val * 60 * 60 * 1000;
+        if (unit === "days") ms = val * 24 * 60 * 60 * 1000;
+        if (unit === "months") ms = val * 30 * 24 * 60 * 60 * 1000;
+        if (unit === "years") ms = val * 365 * 24 * 60 * 60 * 1000;
+      }
+
+      const list = JSON.parse(localStorage.getItem("keyList")) || [];
+      const existIndex = list.findIndex(k => k.key === key);
+
+      const newKey = {
+        key,
+        expire: forever ? null : Date.now() + ms,
+        forever,
+        usesLeft: isNaN(limit) ? null : limit
+      };
+
+      if (existIndex >= 0) list[existIndex] = newKey;
+      else list.push(newKey);
+
+      localStorage.setItem("keyList", JSON.stringify(list));
+      loadKeys();
+    };
+
+    loadKeys();
+  </script>
+</body>
+</html>
